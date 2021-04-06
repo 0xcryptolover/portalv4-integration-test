@@ -146,18 +146,7 @@ func (pg *PortalIntegrationTestSuite) Test1Shield() {
 	for i, v := range utxos {
 		inputs[i] = btcjson.TransactionInput{Vout: v.Vout, Txid: v.TxID}
 	}
-	payments := []string{
-		"12S5Lrs1XeQLbqN4ySyKtjAjd2d7sBP2tjFijzmp6avrrkQCNFMpkXm3FPzj2Wcu2ZNqJEmh9JriVuRErVwhuQnLmWSaggobEWsBEci",
-		"12RuEdPjq4yxivzm8xPxRVHmkL74t4eAdUKPdKKhMEnpxPH3k8GEyULbwq4hjwHWmHQr7MmGBJsMpdCHsYAqNE18jipWQwciBf9yqvQ",
-		"12Rwz4HXkVABgRnSb5Gfu1FaJ7auo3fLNXVGFhxx1dSytxHpWhbkimT1Mv5Z2oCMsssSXTVsapY8QGBZd2J4mPiCTzJAtMyCzb4dDcy",
-		"12S4NL3DZ1KoprFRy1k5DdYSXUq81NtxFKdvUTP3PLqQypWzceL5fBBwXooAsX5s23j7cpb1Za37ddmfSaMpEJDPsnJGZuyWTXJSZZ5",
-	}
-
-	for i := range payments {
-		_, MultiSigAddress, err := GenerateOTMultisigAddress(&chaincfg.TestNet3Params, pg.MasterPubs, pg.NumSigsRequired, payments[i])
-		require.Equal(pg.T(), nil, err)
-		fmt.Printf("Address: %v \n", MultiSigAddress)
-	}
+	_, pg.MultiSig, err = GenerateOTMultisigAddress(&chaincfg.RegressionNetParams, pg.MasterPubs, pg.NumSigsRequired, pg.IncPaymentAddrStr)
 	require.Equal(pg.T(), nil, err)
 	outputs := make([]map[string]interface{}, 2)
 	outputs[0] = make(map[string]interface{}, 0)
