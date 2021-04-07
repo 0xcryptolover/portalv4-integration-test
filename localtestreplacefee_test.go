@@ -301,12 +301,11 @@ func (pg *PortalIntegrationTestSuite) Test1Shield() {
 
 		for {
 			time.Sleep(5 * time.Second)
-			resignedRawTxResult, err := getRequestSigedRawReplaceByFeeTxStatus(replaceByFee["TxID"].(string), pg.IncBridgeHost, "getporalsignedrawreplacefeetransaction")
+			resignedRawTxResult, err := getRequestSigedRawReplaceByFeeTxStatus(replaceByFee["TxID"].(string), pg.IncBridgeHost, "getporalsignedrawreplacebyfeetransaction")
 			if err != nil {
 				continue
 			}
 			batchIDProof := pg.BroadcastRawTx(batchID, resignedRawTxResult["SignedTx"].(string))
-			require.Equal(pg.T(), nil, err)
 			unshields := v.(map[string]interface{})["UnshieldsID"].([]interface{})
 			batchIDProof.Unshields = unshields
 			submitConfirmedProof = append(submitConfirmedProof, batchIDProof)
