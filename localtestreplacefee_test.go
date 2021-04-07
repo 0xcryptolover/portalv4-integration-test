@@ -257,7 +257,7 @@ func (pg *PortalIntegrationTestSuite) Test1Shield() {
 		}
 	}
 
-	fmt.Println("------------ STEP 2': Request replace fee --------------")
+	fmt.Println("------------ STEP 2': Testcase Request replace by fee --------------")
 	portalUnshieldRequests = pg.GetUnshileBatchs()
 	submitConfirmedProof = make([]*BatchIDProof, 0)
 	// init fee 50000 pbtc ~ 5000 satoshi
@@ -314,7 +314,7 @@ func (pg *PortalIntegrationTestSuite) Test1Shield() {
 		}
 	}
 
-	fmt.Println("------------ STEP 3': Submit confirmed external tx --------------")
+	fmt.Println("------------ STEP 3': Submit confirmed replace by fee external tx --------------")
 	for _, proof := range submitConfirmedProof {
 		result, err := submitExternalTx(pg.IncPrivKeyStr, proof.Proof, pg.BTCTokenID, proof.BatchID, pg.IncBridgeHost, "createandsendtxwithportalsubmitconfirmedtx")
 		require.Equal(pg.T(), nil, err)
@@ -363,7 +363,7 @@ func (pg *PortalIntegrationTestSuite) BroadcastRawTx(batchID, rawTx string) *Bat
 	err = redeemTx.Deserialize(buffer)
 	btcTx, err := pg.BTCClient.SendRawTransaction(redeemTx, true)
 	require.Equal(pg.T(), nil, err)
-	fmt.Printf("btc tx id: %v", btcTx.String())
+	fmt.Printf("btc tx id: %v \n", btcTx.String())
 	pg.BTCClient.GenerateToAddress(7, pg.BTCTempAddress, nil)
 	return &BatchIDProof{BatchID: batchID, Proof: buildProof(pg.BTCClient, btcTx)}
 }
