@@ -18,6 +18,7 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/stretchr/testify/suite"
 	"os/exec"
+	"strconv"
 	"testing"
 	"time"
 )
@@ -458,6 +459,247 @@ func getUnshieldStatus(txHash, url, rpcMethod string) (map[string]interface{}, e
 	rpcClient := NewRPCClient()
 	meta := map[string]interface{}{
 		"UnshieldID": txHash,
+	}
+	params := []interface{}{
+		meta,
+	}
+	var res ResponseInc
+	err := rpcClient.RPCCall(
+		"",
+		url,
+		"",
+		rpcMethod,
+		params,
+		&res,
+	)
+	if err != nil {
+		fmt.Println("calling get shield status err: ", err)
+		return nil, err
+	}
+
+	if res.RPCError != nil {
+		return nil, errors.New(res.RPCError.Message)
+	}
+	return res.Result.(map[string]interface{}), nil
+}
+
+func getPortalV4State(beaconHeight int, url, rpcMethod string) (map[string]interface{}, error) {
+	rpcClient := NewRPCClient()
+	meta := map[string]interface{}{
+		"BeaconHeight": strconv.Itoa(beaconHeight),
+	}
+	params := []interface{}{
+		meta,
+	}
+	var res ResponseInc
+	err := rpcClient.RPCCall(
+		"",
+		url,
+		"",
+		rpcMethod,
+		params,
+		&res,
+	)
+	if err != nil {
+		fmt.Println("calling get shield status err: ", err)
+		return nil, err
+	}
+
+	if res.RPCError != nil {
+		return nil, errors.New(res.RPCError.Message)
+	}
+	return res.Result.(map[string]interface{}), nil
+}
+
+func getSignedRawTxByBatchID(batchID, url, rpcMethod string) (map[string]interface{}, error) {
+	rpcClient := NewRPCClient()
+	meta := map[string]interface{}{
+		"BatchID": batchID,
+	}
+	params := []interface{}{
+		meta,
+	}
+	var res ResponseInc
+	err := rpcClient.RPCCall(
+		"",
+		url,
+		"",
+		rpcMethod,
+		params,
+		&res,
+	)
+	if err != nil {
+		fmt.Println("calling get shield status err: ", err)
+		return nil, err
+	}
+
+	if res.RPCError != nil {
+		return nil, errors.New(res.RPCError.Message)
+	}
+	return res.Result.(map[string]interface{}), nil
+}
+
+func getBlockchainInfo(url, rpcMethod string) (map[string]interface{}, error) {
+	rpcClient := NewRPCClient()
+	meta := map[string]interface{}{}
+	params := []interface{}{
+		meta,
+	}
+	var res ResponseInc
+	err := rpcClient.RPCCall(
+		"",
+		url,
+		"",
+		rpcMethod,
+		params,
+		&res,
+	)
+	if err != nil {
+		fmt.Println("calling get shield status err: ", err)
+		return nil, err
+	}
+
+	if res.RPCError != nil {
+		return nil, errors.New(res.RPCError.Message)
+	}
+	return res.Result.(map[string]interface{}), nil
+}
+
+func submitExternalTx(incPrivKeyStr, proof, tokenID, batchID, url, rpcMethod string) (map[string]interface{}, error) {
+	rpcClient := NewRPCClient()
+	meta := map[string]interface{}{
+		"UnshieldProof": proof,
+		"PortalTokenID": tokenID,
+		"BatchID":       batchID,
+	}
+	params := []interface{}{
+		incPrivKeyStr,
+		nil,
+		-1,
+		-1,
+		meta,
+		"",
+		0,
+	}
+	var res ResponseInc
+	err := rpcClient.RPCCall(
+		"",
+		url,
+		"",
+		rpcMethod,
+		params,
+		&res,
+	)
+	if err != nil {
+		fmt.Println("calling get shield status err: ", err)
+		return nil, err
+	}
+
+	if res.RPCError != nil {
+		return nil, errors.New(res.RPCError.Message)
+	}
+	return res.Result.(map[string]interface{}), nil
+}
+
+func getSubmitConfirmedStatus(txHash, url, rpcMethod string) (map[string]interface{}, error) {
+	rpcClient := NewRPCClient()
+	meta := map[string]interface{}{
+		"ReqTxID": txHash,
+	}
+	params := []interface{}{
+		meta,
+	}
+	var res ResponseInc
+	err := rpcClient.RPCCall(
+		"",
+		url,
+		"",
+		rpcMethod,
+		params,
+		&res,
+	)
+	if err != nil {
+		fmt.Println("calling get shield status err: ", err)
+		return nil, err
+	}
+
+	if res.RPCError != nil {
+		return nil, errors.New(res.RPCError.Message)
+	}
+	return res.Result.(map[string]interface{}), nil
+}
+
+// createandsendtxwithportalreplacebyfee
+func replaceByFeeRequest(incPrivKeyStr, batchID, tokenID, replacementFee, url, rpcMethod string) (map[string]interface{}, error) {
+	rpcClient := NewRPCClient()
+	meta := map[string]interface{}{
+		"PortalTokenID":  tokenID,
+		"BatchID":        batchID,
+		"ReplacementFee": replacementFee,
+	}
+	params := []interface{}{
+		incPrivKeyStr,
+		nil,
+		-1,
+		-1,
+		meta,
+		"",
+		0,
+	}
+	var res ResponseInc
+	err := rpcClient.RPCCall(
+		"",
+		url,
+		"",
+		rpcMethod,
+		params,
+		&res,
+	)
+	if err != nil {
+		fmt.Println("calling get shield status err: ", err)
+		return nil, err
+	}
+
+	if res.RPCError != nil {
+		return nil, errors.New(res.RPCError.Message)
+	}
+	return res.Result.(map[string]interface{}), nil
+}
+
+// getportalreplacebyfeestatus
+func getReplaceByFeeRequestStatus(txHash, url, rpcMethod string) (map[string]interface{}, error) {
+	rpcClient := NewRPCClient()
+	meta := map[string]interface{}{
+		"ReqTxID": txHash,
+	}
+	params := []interface{}{
+		meta,
+	}
+	var res ResponseInc
+	err := rpcClient.RPCCall(
+		"",
+		url,
+		"",
+		rpcMethod,
+		params,
+		&res,
+	)
+	if err != nil {
+		fmt.Println("calling get shield status err: ", err)
+		return nil, err
+	}
+
+	if res.RPCError != nil {
+		return nil, errors.New(res.RPCError.Message)
+	}
+	return res.Result.(map[string]interface{}), nil
+}
+
+// getporalsignedrawreplacefeetransaction
+func getRequestSigedRawReplaceByFeeTxStatus(txHash, url, rpcMethod string) (map[string]interface{}, error) {
+	rpcClient := NewRPCClient()
+	meta := map[string]interface{}{
+		"TxID": txHash,
 	}
 	params := []interface{}{
 		meta,

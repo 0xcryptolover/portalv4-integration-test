@@ -1,13 +1,16 @@
 package awesomeProject1
 
 import (
+	"bytes"
 	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
 	"github.com/btcsuite/btcd/btcjson"
 	"github.com/btcsuite/btcd/chaincfg"
 	"github.com/btcsuite/btcd/chaincfg/chainhash"
 	"github.com/btcsuite/btcd/rpcclient"
 	"github.com/btcsuite/btcd/txscript"
+	"github.com/btcsuite/btcd/wire"
 	"github.com/btcsuite/btcutil"
 	"github.com/btcsuite/btcutil/hdkeychain"
 	"github.com/stretchr/testify/require"
@@ -24,19 +27,26 @@ import (
 type PortalIntegrationTestSuite struct {
 	*PortalV4BaseTestSuite
 
-	Host            string
-	Username        string
-	Password        string
-	BTCClient       *rpcclient.Client
-	BTCTempAddress  btcutil.Address
-	BTCTestAddress  btcutil.Address
-	BTCTokenID      string
-	MultiSig        string
-	TestAmount      uint64
-	ExternalAddress string
-	UnshieldAmount  uint64
-	MasterPubs      [][]byte
-	NumSigsRequired int
+	Host             string
+	Username         string
+	Password         string
+	BTCClient        *rpcclient.Client
+	BTCTempAddress   btcutil.Address
+	BTCTestAddress   btcutil.Address
+	BTCTokenID       string
+	MultiSig         string
+	TestAmount       uint64
+	ExternalAddress  string
+	UnshieldAmount   uint64
+	MasterPubs       [][]byte
+	NumSigsRequired  int
+	ReplaceFeeAmount string
+}
+
+type BatchIDProof struct {
+	BatchID   string
+	Proof     string
+	Unshields []interface{}
 }
 
 func NewPortalIntegrationTestSuite(tradingTestSuite *PortalV4BaseTestSuite) *PortalIntegrationTestSuite {
@@ -51,20 +61,21 @@ func (pg *PortalIntegrationTestSuite) SetupSuite() {
 	fmt.Println("Setting up the suite...")
 
 	var err error
-	// remove container if already running
-	//exec.Command("/bin/sh", "-c", "docker rm -f regtest").Output()
-	//exec.Command("/bin/sh", "-c", "docker rm -f portalv4").Output()
-	// setup bitcoin regtest
-	//_, err = exec.Command("/bin/sh", "-c", "docker run -d --name regtest -p 18443:18443 -p 18444:18444 ruimarinho/bitcoin-core -printtoconsole -txindex=1 -reindex-chainstate=1 -regtest=1 -rpcallowip=172.17.0.0/16 -rpcbind=0.0.0.0 -rpcport=18443 -port=18444 -server=1 -rpcuser=thach -rpcpassword=deptrai -fallbackfee=1 -maxtxfee=1000000 -bytespersigop=1000 -datacarriersize=1000").Output()
-	//require.Equal(pg.T(), nil, err)
-	//time.Sleep(3 * time.Second)
+	//remove container if already running
+	exec.Command("/bin/sh", "-c", "docker rm -f regtest").Output()
+	exec.Command("/bin/sh", "-c", "docker rm -f portalv4").Output()
+	//setup bitcoin regtest
+	_, err = exec.Command("/bin/sh", "-c", "docker run -d --name regtest -p 18443:18443 -p 18444:18444 ruimarinho/bitcoin-core -printtoconsole -txindex=1 -reindex-chainstate=1 -regtest=1 -rpcallowip=172.17.0.0/16 -rpcbind=0.0.0.0 -rpcport=18443 -port=18444 -server=1 -rpcuser=thach -rpcpassword=deptrai -fallbackfee=1 -maxtxfee=1000000 -bytespersigop=1000 -datacarriersize=1000").Output()
+	require.Equal(pg.T(), nil, err)
+	time.Sleep(3 * time.Second)
 	pg.Host = "127.0.0.1:18443"
 	pg.Username = "thach"
 	pg.Password = "deptrai"
 	pg.TestAmount = 1e6
 	pg.BTCTokenID = "ef5947f70ead81a76a53c7c8b7317dd5245510c665d3a13921dc9a581188728b"
 	pg.ExternalAddress = "bcrt1q8y058dhaeshdzxfh7jem2zmj3kk05gj5e8nw7e"
-	pg.UnshieldAmount = 1e7
+	pg.ReplaceFeeAmount = "51000"
+	pg.UnshieldAmount = 5e6
 	pg.NumSigsRequired = 3
 	pg.MasterPubs = [][]byte{
 		{0x3, 0xb2, 0xd3, 0x16, 0x7d, 0x94, 0x9c, 0x25, 0x3, 0xe6, 0x9c, 0x9f, 0x29, 0x78, 0x7d, 0x9c, 0x8, 0x8d, 0x39, 0x17, 0x8d, 0xb4, 0x75, 0x40, 0x35, 0xf5, 0xae, 0x6a, 0xf0, 0x17, 0x12, 0x11, 0x0},
@@ -104,27 +115,26 @@ func (pg *PortalIntegrationTestSuite) SetupSuite() {
 	_, err = exec.Command("/bin/sh", "-c", watchAddress).Output()
 	require.Equal(pg.T(), nil, err)
 
-	//_, err = exec.Co mmand("/bin/sh", "-c", "docker run -d --name portalv4 -p 9334:9334 -p 9338:9338 portalv4").Output()
-	//require.Equal(pg.T(), nil, err)
-	//time.Sleep(10 * time.Second)
-	//
-	//for {
-	//	fmt.Println("Calling to incognito to fullnode to check is it ready, please wait...")
-	//	time.Sleep(5 * time.Second)
-	//	if checkRepsonse(pg.IncBridgeHost) {
-	//		break
-	//	}
-	//}
-	//time.Sleep(40 * time.Second)
+	_, err = exec.Command("/bin/sh", "-c", "docker run -d --name portalv4 -p 9334:9334 -p 9338:9338 portalv4").Output()
+	require.Equal(pg.T(), nil, err)
+	time.Sleep(10 * time.Second)
+
+	for {
+		fmt.Println("Calling to incognito to fullnode to check is it ready, please wait...")
+		time.Sleep(5 * time.Second)
+		if checkRepsonse(pg.IncBridgeHost) {
+			break
+		}
+	}
 }
 
 func (pg *PortalIntegrationTestSuite) TearDownSuite() {
 	fmt.Println("Tearing down the suite...")
-	//var err error
-	//_, err = exec.Command("/bin/sh", "-c", "docker rm -f portalv4").Output()
-	//require.Equal(pg.T(), nil, err)
-	//_, err = exec.Command("/bin/sh", "-c", "docker rm -f regtest").Output()
-	//require.Equal(pg.T(), nil, err)
+	var err error
+	_, err = exec.Command("/bin/sh", "-c", "docker rm -f portalv4").Output()
+	require.Equal(pg.T(), nil, err)
+	_, err = exec.Command("/bin/sh", "-c", "docker rm -f regtest").Output()
+	require.Equal(pg.T(), nil, err)
 	pg.BTCClient.Shutdown()
 }
 
@@ -147,6 +157,8 @@ func (pg *PortalIntegrationTestSuite) Test1Shield() {
 		inputs[i] = btcjson.TransactionInput{Vout: v.Vout, Txid: v.TxID}
 	}
 	_, pg.MultiSig, err = GenerateOTMultisigAddress(&chaincfg.RegressionNetParams, pg.MasterPubs, pg.NumSigsRequired, pg.IncPaymentAddrStr)
+	require.Equal(pg.T(), nil, err)
+	err = pg.BTCClient.ImportAddress(pg.MultiSig)
 	require.Equal(pg.T(), nil, err)
 	outputs := make([]map[string]interface{}, 2)
 	outputs[0] = make(map[string]interface{}, 0)
@@ -208,9 +220,119 @@ func (pg *PortalIntegrationTestSuite) Test1Shield() {
 		}
 	}
 
-	fmt.Println("------------ STEP 3: Request replace fee --------------")
+	portalUnshieldRequests := pg.GetUnshileBatchs()
+	submitConfirmedProof := make([]*BatchIDProof, 0)
+	for _, v := range portalUnshieldRequests {
+		batchID := v.(map[string]interface{})["BatchID"].(string)
+		for {
+			time.Sleep(5 * time.Second)
+			resignedRawTxResult, err := getSignedRawTxByBatchID(batchID, pg.IncBridgeHost, "getportalsignedrawtransaction")
+			if err != nil {
+				continue
+			}
+			batchIDProof := pg.BroadcastRawTx(batchID, resignedRawTxResult["SignedTx"].(string))
+			unshields := v.(map[string]interface{})["UnshieldsID"].([]interface{})
+			batchIDProof.Unshields = unshields
+			submitConfirmedProof = append(submitConfirmedProof, batchIDProof)
+			break
+		}
+	}
 
-	fmt.Println("------------ STEP 4: Submit confirmed external tx --------------")
+	fmt.Println("------------ STEP 3: Submit confirmed external tx --------------")
+	for _, proof := range submitConfirmedProof {
+		result, err := submitExternalTx(pg.IncPrivKeyStr, proof.Proof, pg.BTCTokenID, proof.BatchID, pg.IncBridgeHost, "createandsendtxwithportalsubmitconfirmedtx")
+		require.Equal(pg.T(), nil, err)
+		//wait until submitConfirmedProof return status
+		for {
+			time.Sleep(5 * time.Second)
+			submitConfirmedStatus, _ := getSubmitConfirmedStatus(result["TxID"].(string), pg.IncBridgeHost, "getportalsubmitconfirmedtxstatus")
+			if submitConfirmedStatus != nil {
+				require.Equal(pg.T(), float64(1), submitConfirmedStatus["Status"].(float64))
+				break
+			}
+		}
+		for _, v := range proof.Unshields {
+			unshieldCompleted, _ := getUnshieldStatus(v.(string), pg.IncBridgeHost, "getportalunshieldrequeststatus")
+			require.Equal(pg.T(), float64(2), unshieldCompleted["Status"].(float64))
+		}
+	}
+
+	fmt.Println("------------ STEP 2': Request replace fee --------------")
+	portalUnshieldRequests = pg.GetUnshileBatchs()
+	submitConfirmedProof = make([]*BatchIDProof, 0)
+	// init fee 50000 pbtc ~ 5000 satoshi
+	unshieldRes, err = unshieldPToken("createandsendtxwithportalv4unshieldrequest", pg.IncBridgeHost, pg.IncPrivKeyStr, pg.IncPaymentAddrStr, pg.ExternalAddress, pg.BTCTokenID, strconv.FormatUint(pg.UnshieldAmount, 10))
+	require.Equal(pg.T(), nil, err)
+	fmt.Printf("Unshield result: %v \n", unshieldRes)
+	unshieldTxID = unshieldRes["TxID"].(string)
+	// expect unshield pending
+	for {
+		time.Sleep(5 * time.Second)
+		unshieldStatus, _ := getUnshieldStatus(unshieldTxID, pg.IncBridgeHost, "getportalunshieldrequeststatus")
+		if unshieldStatus != nil {
+			fmt.Printf("unshield status: %v \n", unshieldStatus)
+			require.Equal(pg.T(), float64(0), unshieldStatus["Status"].(float64))
+			break
+		}
+	}
+
+	//wait until batchid created
+	for {
+		time.Sleep(5 * time.Second)
+		unshieldStatus, _ := getUnshieldStatus(unshieldTxID, pg.IncBridgeHost, "getportalunshieldrequeststatus")
+		if unshieldStatus["Status"].(float64) == 1 {
+			break
+		}
+	}
+	time.Sleep(130 * time.Second)
+	for _, v := range portalUnshieldRequests {
+		batchID := v.(map[string]interface{})["BatchID"].(string)
+		replaceByFee, err := replaceByFeeRequest(pg.IncPrivKeyStr, batchID, pg.BTCTokenID, pg.ReplaceFeeAmount, pg.IncBridgeHost, "createandsendtxwithportalreplacebyfee")
+		require.Equal(pg.T(), nil, err)
+		for {
+			time.Sleep(5 * time.Second)
+			replaceByFeeStatus, _ := getReplaceByFeeRequestStatus(replaceByFee["TxID"].(string), pg.IncBridgeHost, "getportalreplacebyfeestatus")
+			if replaceByFeeStatus != nil {
+				fmt.Printf("replace by fee status: %v \n", replaceByFeeStatus)
+				require.Equal(pg.T(), float64(1), replaceByFeeStatus["Status"].(float64))
+				break
+			}
+		}
+
+		for {
+			time.Sleep(5 * time.Second)
+			resignedRawTxResult, err := getRequestSigedRawReplaceByFeeTxStatus(replaceByFee["TxID"].(string), pg.IncBridgeHost, "getporalsignedrawreplacefeetransaction")
+			if err != nil {
+				continue
+			}
+			batchIDProof := pg.BroadcastRawTx(batchID, resignedRawTxResult["SignedTx"].(string))
+			require.Equal(pg.T(), nil, err)
+			unshields := v.(map[string]interface{})["UnshieldsID"].([]interface{})
+			batchIDProof.Unshields = unshields
+			submitConfirmedProof = append(submitConfirmedProof, batchIDProof)
+			break
+		}
+	}
+
+	fmt.Println("------------ STEP 3': Submit confirmed external tx --------------")
+	for _, proof := range submitConfirmedProof {
+		result, err := submitExternalTx(pg.IncPrivKeyStr, proof.Proof, pg.BTCTokenID, proof.BatchID, pg.IncBridgeHost, "createandsendtxwithportalsubmitconfirmedtx")
+		require.Equal(pg.T(), nil, err)
+		//wait until submitConfirmedProof return status
+		for {
+			time.Sleep(5 * time.Second)
+			submitConfirmedStatus, _ := getSubmitConfirmedStatus(result["TxID"].(string), pg.IncBridgeHost, "getportalsubmitconfirmedtxstatus")
+			if submitConfirmedStatus != nil {
+				require.Equal(pg.T(), float64(1), submitConfirmedStatus["Status"].(float64))
+				break
+			}
+		}
+
+		for _, v := range proof.Unshields {
+			unshieldCompleted, _ := getUnshieldStatus(v.(string), pg.IncBridgeHost, "getportalunshieldrequeststatus")
+			require.Equal(pg.T(), float64(2), unshieldCompleted["Status"].(float64))
+		}
+	}
 }
 
 func checkRepsonse(url string) bool {
@@ -220,6 +342,30 @@ func checkRepsonse(url string) bool {
 		return false
 	}
 	return true
+}
+
+func (pg *PortalIntegrationTestSuite) GetUnshileBatchs() map[string]interface{} {
+	blockchainInfo, err := getBlockchainInfo(pg.IncBridgeHost, "getblockchaininfo")
+	require.Equal(pg.T(), nil, err)
+	beaconInfo := blockchainInfo["BestBlocks"].(map[string]interface{})["-1"].(map[string]interface{})
+	beaconHeight := beaconInfo["Height"].(float64)
+	portalState, err := getPortalV4State(int(beaconHeight), pg.IncBridgeHost, "getportalv4state")
+	require.Equal(pg.T(), nil, err)
+	portalProccessedUnshield := portalState["ProcessedUnshieldRequests"].(map[string]interface{})[pg.BTCTokenID]
+	return portalProccessedUnshield.(map[string]interface{})
+}
+
+func (pg *PortalIntegrationTestSuite) BroadcastRawTx(batchID, rawTx string) *BatchIDProof {
+	hexRawTx, err := hex.DecodeString(rawTx)
+	require.Equal(pg.T(), nil, err)
+	buffer := bytes.NewReader(hexRawTx)
+	redeemTx := wire.NewMsgTx(wire.TxVersion)
+	err = redeemTx.Deserialize(buffer)
+	btcTx, err := pg.BTCClient.SendRawTransaction(redeemTx, true)
+	require.Equal(pg.T(), nil, err)
+	fmt.Printf("btc tx id: %v", btcTx.String())
+	pg.BTCClient.GenerateToAddress(7, pg.BTCTempAddress, nil)
+	return &BatchIDProof{BatchID: batchID, Proof: buildProof(pg.BTCClient, btcTx)}
 }
 
 // In order for 'go test' to run this suite, we need to create
