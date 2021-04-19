@@ -126,6 +126,9 @@ func (pg *PortalIntegrationTestSuite) SetupSuite() {
 			break
 		}
 	}
+
+	// wait until beacon block reach out to 10 height
+	time.Sleep(120 * time.Second)
 }
 
 func (pg *PortalIntegrationTestSuite) TearDownSuite() {
