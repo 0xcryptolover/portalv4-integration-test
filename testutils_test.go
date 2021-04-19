@@ -71,6 +71,7 @@ type PortalV4BaseTestSuite struct {
 	IncPrivKeyStr     string
 	IncPaymentAddrStr string
 	IncBridgeHost     string
+	IncOTAPriKey      string
 }
 
 // Make sure that VariableThatShouldStartAtFive is set to five
@@ -78,10 +79,11 @@ type PortalV4BaseTestSuite struct {
 func (portalV4Suite *PortalV4BaseTestSuite) SetupSuite() {
 	fmt.Println("Setting up the suite...")
 
-	portalV4Suite.IncBurningAddrStr = "15pABFiJVeh9D5uiQEhQX4SVibGGbdAVipQxBdxkmDqAJaoG1EdFKHBrNfs"
+	portalV4Suite.IncBurningAddrStr = "12RxahVABnAVCGP3LGwCn8jkQxgw7z1x14wztHzn455TTVpi1wBq9YGwkRMQg3J4e657AbAnCvYCJSdA9czBUNuCKwGSRQt55Xwz8WA"
 	portalV4Suite.IncPrivKeyStr = "112t8roafGgHL1rhAP9632Yef3sx5k8xgp8cwK4MCJsCL1UWcxXvpzg97N4dwvcD735iKf31Q2ZgrAvKfVjeSUEvnzKJyyJD3GqqSZdxN4or"
-	portalV4Suite.IncPaymentAddrStr = "12S5Lrs1XeQLbqN4ySyKtjAjd2d7sBP2tjFijzmp6avrrkQCNFMpkXm3FPzj2Wcu2ZNqJEmh9JriVuRErVwhuQnLmWSaggobEWsBEci"
+	portalV4Suite.IncPaymentAddrStr = "12svfkP6w5UDJDSCwqH978PvqiqBxKmUnA9em9yAYWYJVRv7wuXY1qhhYpPAm4BDz2mLbFrRmdK3yRhnTqJCZXKHUmoi7NV83HCH2YFpctHNaDdkSiQshsjw2UFUuwdEvcidgaKmF3VJpY5f8RdN"
 	portalV4Suite.IncBridgeHost = "http://127.0.0.1:9334"
+	portalV4Suite.IncOTAPriKey = "14yJXBcq3EZ8dGh2DbL3a78bUUhWHDN579fMFx6zGVBLhWGzr2V4ZfUgjGHXkPnbpcvpepdzqAJEKJ6m8Cfq4kYiqaeSRGu37ns87ss"
 }
 
 func (portalV4Suite *PortalV4BaseTestSuite) TearDownSuite() {
@@ -703,6 +705,57 @@ func getRequestSigedRawReplaceByFeeTxStatus(txHash, url, rpcMethod string) (map[
 	}
 	params := []interface{}{
 		meta,
+	}
+	var res ResponseInc
+	err := rpcClient.RPCCall(
+		"",
+		url,
+		"",
+		rpcMethod,
+		params,
+		&res,
+	)
+	if err != nil {
+		fmt.Println("calling get shield status err: ", err)
+		return nil, err
+	}
+
+	if res.RPCError != nil {
+		return nil, errors.New(res.RPCError.Message)
+	}
+	return res.Result.(map[string]interface{}), nil
+}
+
+func submitKey(otaKey, url, rpcMethod string) (map[string]interface{}, error) {
+	rpcClient := NewRPCClient()
+	params := []interface{}{
+		otaKey,
+	}
+	var res ResponseInc
+	err := rpcClient.RPCCall(
+		"",
+		url,
+		"",
+		rpcMethod,
+		params,
+		&res,
+	)
+	if err != nil {
+		fmt.Println("calling get shield status err: ", err)
+		return nil, err
+	}
+
+	if res.RPCError != nil {
+		return nil, errors.New(res.RPCError.Message)
+	}
+	return res.Result.(map[string]interface{}), nil
+}
+
+func convertToPrivacyV2(prikey, url, rpcMethod string) (map[string]interface{}, error) {
+	rpcClient := NewRPCClient()
+	params := []interface{}{
+		prikey,
+		1,
 	}
 	var res ResponseInc
 	err := rpcClient.RPCCall(

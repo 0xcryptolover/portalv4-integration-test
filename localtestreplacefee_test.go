@@ -169,6 +169,14 @@ func (pg *PortalIntegrationTestSuite) Test1Shield() {
 	outputs[1] = make(map[string]interface{}, 0)
 	outputs[1][pg.BTCTestAddress.String()] = float64(99998000000) / BTC_DECIMAL
 
+	fmt.Println("------------ Convert To PrivacyV2 --------------")
+	result, err := submitKey(pg.IncOTAPriKey, pg.IncBridgeHost, "submitkey")
+	fmt.Println(result)
+	time.Sleep(40 * time.Second)
+	result, err = convertToPrivacyV2(pg.IncPrivKeyStr, pg.IncBridgeHost, "createconvertcoinver1tover2transaction")
+	fmt.Println(result)
+	time.Sleep(40 * time.Second)
+
 	fmt.Println("------------ STEP 1: Shield Bitcoin --------------")
 	// send bitcoin to incognito multisig address
 	sendBTCTxID, err := createAndSendRawTx(pg.BTCClient, pg.Host, pg.Username+":"+pg.Password, pg.BTCTestAddress, inputs, outputs)

@@ -18,7 +18,8 @@ RUN chmod a+x init_param.sh
 RUN ./init_param.sh
 RUN go build -o incognito
 COPY run.sh run.sh
-RUN chmod a+x run.sh
+COPY run_node.sh run_node.sh
+RUN chmod a+x run.sh run_node.sh
 
 EXPOSE 9334 9338
 
